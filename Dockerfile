@@ -1,9 +1,9 @@
-FROM golang:1.13.6-alpine3.11 as builder
+FROM golang:1.22.3-alpine3.20 as builder
 
 RUN apk add --no-cache curl
 
 # ffmpeg source - https://github.com/alfg/docker-ffmpeg
-ARG FFMPEG_VERSION=6.0
+ARG FFMPEG_VERSION=7.0
 ARG PREFIX=/opt/ffmpeg
 ARG LD_LIBRARY_PATH=/opt/ffmpeg/lib
 ARG MAKEFLAGS="-j4"
@@ -17,6 +17,7 @@ RUN apk update && apk add --update \
   lame-dev \
   openssl-dev \
   libogg-dev \
+  libxcb \
   libass \
   libass-dev \
   libvpx-dev \
@@ -61,7 +62,6 @@ RUN cd /tmp/ffmpeg-${FFMPEG_VERSION} && \
   --enable-libwebp \
   --enable-librtmp \
   --enable-postproc \
-  --enable-avresample \
   --enable-libfreetype \
   --disable-debug \
   --disable-doc \
@@ -82,6 +82,7 @@ COPY templates templates
 COPY go.mod go.mod
 
 RUN go mod download
+RUN go mod tidy
 RUN go build -x -o media-roller ./src
 
 # youtube-dl needs python
@@ -116,9 +117,8 @@ COPY static /app/static
 
 WORKDIR /app
 
-RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux -o /usr/local/bin/youtube-dl && \
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/youtube-dl && \
    chmod a+rx /usr/local/bin/youtube-dl && \
-   youtube-dl --version && \
-   ffmpeg -version
+   youtube-dl --version
 
 CMD /app/media-roller
